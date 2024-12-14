@@ -60,7 +60,7 @@
   isHome: false,
   isHighlightShrink: true,
   isToc: false,
-  postUpdate: '2024-12-14 22:15:22',
+  postUpdate: '2024-12-14 22:57:14',
   postMainColor: '',
 }</script><noscript><style type="text/css">
   #nav {
@@ -321,7 +321,7 @@ queueMicrotask(() => {
     updateTime();
     updateHtml();
   }, 1000);
-})();</script><script src="https://cdn.cbd.int/algoliasearch@4.18.0/dist/algoliasearch-lite.umd.js"></script><script src="https://cdn.cbd.int/instantsearch.js@4.60.0/dist/instantsearch.production.min.js"></script><script src="/js/search/algolia.js"></script><div class="js-pjax"><input type="hidden" name="page-type" id="page-type" value="404"></div><script>window.addEventListener('load', () => {
+})();</script><script src="https://cdn.cbd.int/algoliasearch@4.18.0/dist/algoliasearch-lite.umd.js"></script><script src="https://cdn.cbd.int/instantsearch.js@4.60.0/dist/instantsearch.production.min.js"></script><script src="/js/search/algolia.js"></script><div class="js-pjax"><input type="hidden" name="page-type" id="page-type" value="404"></div><script src="https://cdn.cbd.int/blueimp-md5@2.19.0/js/md5.min.js"></script><script>window.addEventListener('load', () => {
   const changeContent = (content) => {
     if (content === '') return content
 
@@ -336,37 +336,11 @@ queueMicrotask(() => {
     return content
   }
 
-  const getComment = () => {
-    const runTwikoo = () => {
-      twikoo.getRecentComments({
-        envId: '',
-        region: '',
-        pageSize: 6,
-        includeReply: true
-      }).then(function (res) {
-        const twikooArray = res.map(e => {
-          return {
-            'content': changeContent(e.comment),
-            'avatar': e.avatar,
-            'nick': e.nick,
-            'url': e.url + '#' + e.id,
-            'date': new Date(e.created).toISOString()
-          }
-        })
-
-        saveToLocal.set('twikoo-newest-comments', JSON.stringify(twikooArray), 10/(60*24))
-        generateHtml(twikooArray)
-      }).catch(function (err) {
-        const $dom = document.querySelector('#card-newest-comments .aside-list')
-        $dom.textContent= "无法获取评论，请确认相关配置是否正确"
-      })
-    }
-
-    if (typeof twikoo === 'object') {
-      runTwikoo()
-    } else {
-      getScript('https://cdn.cbd.int/twikoo@1.6.39/dist/twikoo.all.min.js').then(runTwikoo)
-    }
+  const getIcon = (icon, mail) => {
+    if (icon) return icon
+    let defaultIcon = '?d=mp'
+    let iconUrl = `https://gravatar.loli.net/avatar/${md5(mail.toLowerCase()) + defaultIcon}`
+    return iconUrl
   }
 
   const generateHtml = array => {
@@ -378,13 +352,13 @@ queueMicrotask(() => {
 
         if (true) {
           const name = 'data-lazy-src'
-          result += `<a href='${array[i].url}' class='thumbnail'><img ${name}='${array[i].avatar}' alt='${array[i].nick}'><div class='name'><span>${array[i].nick} </span></div></a>`
+          result += `<a href='${array[i].url}' class='thumbnail'><img ${name}='${array[i].avatar}' alt='${array[i].nick}'></a>`
         }
-        
+
         result += `<div class='content'>
         <a class='comment' href='${array[i].url}' title='${array[i].content}'>${array[i].content}</a>
-        <time datetime="${array[i].date}">${anzhiyu.diffDate(array[i].date, true)}</time></div>
-        </div>`
+        <div class='name'><span>${array[i].nick} / </span><time datetime="${array[i].date}">${anzhiyu.diffDate(array[i].date, true)}</time></div>
+        </div></div>`
       }
     } else {
       result += '没有评论'
@@ -396,9 +370,41 @@ queueMicrotask(() => {
     window.pjax && window.pjax.refresh($dom)
   }
 
+  const getComment = () => {
+    const serverURL = 'https://IEB3wpjL.api.lncldglobal.com'
+
+    var settings = {
+      "method": "GET",
+      "headers": {
+        "X-LC-Id": 'IEB3wpjLD2GUSNxiJV3H1wJV-gzGzoHsz',
+        "X-LC-Key": '2dQoQaTpXnZ1XHSAASajUMqW',
+        "Content-Type": "application/json"
+      },
+    }
+
+    fetch(`${serverURL}/1.1/classes/Comment?limit=6&order=-createdAt`,settings)
+      .then(response => response.json())
+      .then(data => {
+        const valineArray = data.results.map(function (e) {
+          return {
+            'avatar': getIcon(e.QQAvatar, e.mail),
+            'content': changeContent(e.comment),
+            'nick': e.nick,
+            'url': e.url + '#' + e.objectId,
+            'date': e.updatedAt,
+          }
+        })
+        saveToLocal.set('valine-newest-comments', JSON.stringify(valineArray), 10/(60*24))
+        generateHtml(valineArray)
+      }).catch(e => {
+        const $dom = document.querySelector('#card-newest-comments .aside-list')
+        $dom.textContent= "无法获取评论，请确认相关配置是否正确"
+      }) 
+  }
+
   const newestCommentInit = () => {
     if (document.querySelector('#card-newest-comments .aside-list')) {
-      const data = saveToLocal.get('twikoo-newest-comments')
+      const data = saveToLocal.get('valine-newest-comments')
       if (data) {
         generateHtml(JSON.parse(data))
       } else {
